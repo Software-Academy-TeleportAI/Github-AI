@@ -54,8 +54,6 @@ json_string = """
     universe_domain=universe_domain
 )
 
-print(f"json_string: {json_string}")
-
 @dataclass
 class DiagramResult:
     """Store diagram generation results"""
@@ -79,7 +77,7 @@ class LLMDiagramGenerator:
         credentials = service_account.Credentials.from_service_account_info(credentials_info)
         self.llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", credentials=credentials)
         
-        # Create prompts
+   
         self._setup_prompts()
     
     def _setup_prompts(self):
@@ -87,17 +85,18 @@ class LLMDiagramGenerator:
         self.analysis_prompt = ChatPromptTemplate.from_messages([
             (
                 "system",
-                """You are an expert software architect and code analyzer. Your task is to analyze code files and create clear, accurate Mermaid diagrams.
+                """"You are an expert software architect and code analyzer. Your task is to analyze code files and create clear, accurate Mermaid diagrams.
 
-                Guidelines:
-                1. Identify all classes, interfaces, structs, functions, and their relationships
-                2. Show inheritance, composition, and important dependencies
-                3. Keep diagrams clean - show only the most important methods (max 5 per class)
-                4. Use proper Mermaid syntax for class diagrams
-                5. Add meaningful labels and descriptions
-                6. Support multiple programming languages (Python, JavaScript, Java, Go, Rust, etc.)
-
-                Return ONLY the Mermaid diagram code wrapped in ```mermaid``` blocks, followed by a brief description."""
+                    Guidelines:
+                    1. Identify all classes, interfaces, structs, functions, and their relationships
+                    2. Show inheritance, composition, and important dependencies
+                    3. Keep diagrams clean - show only the most important methods (max 5 per class)
+                    4. Use **valid Mermaid classDiagram syntax** only
+                    5. **Do NOT add notes for individual methods or attributes.**
+                    6. Only use `note for ClassName "..."` or detached notes like `note "..." as Note1`
+                    7. Ensure diagrams pass Mermaid parser validation
+                    8. Add a short plain-text description after the ```mermaid``` block."
+                """
             ),
 
             MessagesPlaceholder(variable_name="messages")
@@ -126,7 +125,7 @@ class LLMDiagramGenerator:
     def generate_class_diagram(self, file_path: str, code_content: str) -> DiagramResult:
         """Generate class diagram for a single file"""
         try:
-            # Truncate very large files
+
             max_chars = 15000
             if len(code_content) > max_chars:
                 code_content = code_content[:max_chars] + "\n\n... (truncated)"
@@ -149,7 +148,6 @@ class LLMDiagramGenerator:
             
             response = self.analysis_chain.invoke({"messages": messages})
             
-            # Extract mermaid code
             mermaid_code = self._extract_mermaid_code(response.content)
             description = self._extract_description(response.content)
             
@@ -172,7 +170,7 @@ class LLMDiagramGenerator:
     def generate_repository_structure(self, file_list: List[str]) -> DiagramResult:
         """Generate overall repository structure diagram"""
         try:
-            # Group files by directory
+        
             structure_summary = self._summarize_structure(file_list)
             
             messages = [
@@ -209,10 +207,9 @@ class LLMDiagramGenerator:
     def generate_multi_file_diagram(self, files: List[Tuple[str, str]]) -> DiagramResult:
         """Generate diagram showing relationships across multiple files"""
         try:
-            # Combine file summaries
+            
             file_summaries = []
-            for file_path, content in files[:10]:  # Limit to 10 files
-                # Get first 1000 chars of each file
+            for file_path, content in files[:10]: 
                 summary = content[:1000]
                 file_summaries.append(f"File: {file_path}\n{summary}\n---")
             
@@ -260,19 +257,17 @@ class LLMDiagramGenerator:
         """Extract mermaid code from LLM response"""
         import re
         
-        # Try to find mermaid code block
         pattern = r'```mermaid\s*(.*?)\s*```'
         match = re.search(pattern, content, re.DOTALL)
         
         if match:
             return match.group(1).strip()
         
-        # If no mermaid block, return the whole content
         return content.strip()
     
     def _extract_description(self, content: str) -> str:
         """Extract description from LLM response"""
-        # Get text after the mermaid block
+      
         parts = content.split('```')
         if len(parts) > 2:
             return parts[-1].strip()
@@ -295,7 +290,7 @@ class LLMDiagramGenerator:
         summary = []
         for directory, files in sorted(structure.items()):
             summary.append(f"\n{directory}/")
-            for file in sorted(files)[:10]:  # Limit files per directory
+            for file in sorted(files)[:10]: 
                 summary.append(f"  - {file}")
             if len(files) > 10:
                 summary.append(f"  ... ({len(files) - 10} more files)")
@@ -311,7 +306,6 @@ class DiagramExporter:
         """Save diagram to markdown file"""
         os.makedirs(output_dir, exist_ok=True)
         
-        # Create safe filename
         safe_name = result.file_path.replace('/', '_').replace('.', '_')
         output_path = os.path.join(output_dir, f"{safe_name}.md")
         
