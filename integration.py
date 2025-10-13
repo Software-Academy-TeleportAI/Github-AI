@@ -1,6 +1,6 @@
 from github import Github
 
-class InitModel:
+class InitModelAI:
     def __init__(self, api_key: str):
         self.api_key = api_key
 
