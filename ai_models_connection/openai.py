@@ -1,5 +1,5 @@
 from langchain.chat_models import ChatOpenAI
-from ai-provider import BaseLLMProvider
+from ai_models_connection.ai_provider import BaseLLMProvider
 
 class OpenAIProvider(BaseLLMProvider):
     def __init__(self, api_key: str, model: str = "gpt-4"):

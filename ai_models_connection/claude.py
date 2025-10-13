@@ -1,5 +1,5 @@
 from langchain_anthropic import ChatAnthropic
-from ai-provider import BaseLLMProvider
+from ai_models_connection.ai_provider import BaseLLMProvider
 
 class ClaudeProvider(BaseLLMProvider):
     def __init__(self, api_key: str, model: str = "claude-3-5-sonnet-20240620"):

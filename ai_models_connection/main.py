@@ -1,3 +1,5 @@
+from ai_models_connection.ai_provider import BaseLLMProvider
+
 class InitModelAI:
     def __init__(self, provider: BaseLLMProvider):
         self.llm = provider.get_llm()
