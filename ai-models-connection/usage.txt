@@ -1,0 +1,17 @@
+# OpenAI
+openai_provider = OpenAIProvider(api_key="YOUR_OPENAI_KEY", model="gpt-4")
+ai_client = InitModelAI(openai_provider)
+ai_client.set_analysis_chain(analysis_prompt)
+response = ai_client.analysis_chain.run("Analyze this data...")
+
+# Google
+google_provider = GoogleProvider(credentials=your_credentials)
+ai_client = InitModelAI(google_provider)
+ai_client.set_analysis_chain(analysis_prompt)
+response = ai_client.analysis_chain.run("Analyze this data...")
+
+# Claude
+claude_provider = ClaudeProvider(api_key="YOUR_ANTHROPIC_API_KEY", model="claude-3-5-sonnet-20240620")
+ai_client = InitModelAI(claude_provider)
+ai_client.set_analysis_chain(analysis_prompt)
+response = ai_client.analysis_chain.run("Analyze this data...")
