@@ -1,7 +1,8 @@
 from github import Github
 import base64
 from llm import LLMDiagramGenerator, DiagramExporter
-from integration import InitModelAI, SetUpGithub
+from integration import SetUpGithub
+from ai_models_connection.main import InitModelAI
 from dotenv import load_dotenv
 import os
 

@@ -1,9 +1,5 @@
 from github import Github
 
-class InitModelAI:
-    def __init__(self, api_key: str):
-        self.api_key = api_key
-
 class SetUpGithub:
     def __init__(self, github_token: str, repo_name: str):
         self.github_token = github_token

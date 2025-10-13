@@ -7,7 +7,8 @@ from typing import List, Dict, Tuple
 from dataclasses import dataclass
 from dotenv import load_dotenv
 from pathlib import Path
-
+from ai_models_connection.llm_provider import LLMProviderFactory
+from ai_models_connection.main import InitModelAI
 
 env_path = Path(__file__).parent / '.env'
 load_dotenv(dotenv_path=env_path, override=True)
@@ -67,16 +68,18 @@ class DiagramResult:
 class LLMDiagramGenerator:
     """Generate code diagrams using Google Gemini LLM"""
     
-    def __init__(self, credentials_json: str = None):
+    def __init__(self, credentials_json: str = None, user_choice: str = "google"):
         """Initialize LLM with credentials"""
-        if credentials_json:
-            credentials_info = json.loads(credentials_json)
+        if credentials_json and user_choice:
+            provider = LLMProviderFactory.create_provider(user_choice, credentials_json)
+            model_ai = InitModelAI(provider)
+            self.llm = model_ai.llm
+
         else:
             credentials_info = json.loads(json_string)
-        
-        credentials = service_account.Credentials.from_service_account_info(credentials_info)
-        self.llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", credentials=credentials)
-        
+            credentials = service_account.Credentials.from_service_account_info(credentials_info)
+            self.llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", credentials=credentials)
+
    
         self._setup_prompts()
     
