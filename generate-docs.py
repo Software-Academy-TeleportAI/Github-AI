@@ -5,17 +5,25 @@ from integration import SetUpGithub
 from ai_models_connection.main import InitModelAI
 from dotenv import load_dotenv
 import os
+import time
 
 load_dotenv()
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 REPO_NAME = os.getenv("REPO_NAME")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 repoClass = SetUpGithub(github_token=GITHUB_TOKEN, repo_name=REPO_NAME)
 repo = repoClass.authenticate()
 
+languages = repo.get_languages()
+
+repo_languages = list(languages.keys())
+
+api_key = GOOGLE_API_KEY
+
 print("Initializing LLM Diagram Generator...")
-generator = LLMDiagramGenerator()
+generator = LLMDiagramGenerator(repo_languages=repo_languages, model="gemini-2.5-pro", api_key=api_key, user_choice="google")
 exporter = DiagramExporter()
 
 
@@ -63,6 +71,8 @@ for idx, file in enumerate(code_files, 1):
                 print(f"  📝 {result.description[:100]}...")
         else:
             print(f"  ✗ Failed: {result.error}")
+
+        time.sleep(20)  # Sleep to avoid rate limits
             
     except Exception as e:
         print(f"  ✗ Error: {e}")
