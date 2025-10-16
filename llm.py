@@ -68,10 +68,11 @@ class DiagramResult:
 class LLMDiagramGenerator:
     """Generate code diagrams using Google Gemini LLM"""
     
-    def __init__(self, credentials_json: str = None, user_choice: str = "google"):
+    def __init__(self, credentials_json: str = None, user_choice: str = "google", model: str = "gemini-2.0-flash", repo_languages: List[str] = None, api_key: str = None):
         """Initialize LLM with credentials"""
-        if credentials_json and user_choice:
-            provider = LLMProviderFactory.create_provider(user_choice, credentials_json)
+        if api_key and user_choice:
+            print(f"Using {user_choice} model: {model}, cred: {api_key}")
+            provider = LLMProviderFactory.create_provider(provider_name=user_choice, api_key=api_key, model=model)
             model_ai = InitModelAI(provider)
             self.llm = model_ai.llm
 
@@ -80,7 +81,7 @@ class LLMDiagramGenerator:
             credentials = service_account.Credentials.from_service_account_info(credentials_info)
             self.llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", credentials=credentials)
 
-   
+        self.languages = repo_languages or []
         self._setup_prompts()
     
     def _setup_prompts(self):
@@ -88,18 +89,28 @@ class LLMDiagramGenerator:
         self.analysis_prompt = ChatPromptTemplate.from_messages([
             (
                 "system",
-                """"You are an expert software architect and code analyzer. Your task is to analyze code files and create clear, accurate Mermaid diagrams.
+                f""""You are an expert software architect and code analyzer. Your task is to analyze code files and create clear, accurate Mermaid diagrams.
+                    The code what you are analyzing is written in the following programming languages: {self.languages}.
+
+                    CRITICAL RULES FOR MERMAID SYNTAX:
+                    1. Use ONLY standard Mermaid classDiagram syntax
+                    2. **NEVER use note statements** - they cause parsing errors
+                    3. Show classes, methods, and relationships ONLY
 
                     Guidelines:
                     1. Identify all classes, interfaces, structs, functions, and their relationships
                     2. Show inheritance, composition, and important dependencies
-                    3. Keep diagrams clean - show only the most important methods (max 5 per class)
                     4. Use **valid Mermaid classDiagram syntax** only
                     5. **Do NOT add notes for individual methods or attributes.**
                     6. Only use `note for ClassName "..."` or detached notes like `note "..." as Note1`
                     7. Ensure diagrams pass Mermaid parser validation
                     8. Add a short plain-text description after the ```mermaid``` block."
-                """
+                    9. NEVER use curly braces like abstract or static
+                    10. Use <<abstract>> to denote abstract classes above the class name, not inside curly braces
+                    11. Use <<static>> to denote static methods, not inside curly braces
+
+                    Return ONLY valid Mermaid classDiagram code in ```mermaid``` blocks, followed by a plain text description.
+                    """
             ),
 
             MessagesPlaceholder(variable_name="messages")
@@ -108,7 +119,8 @@ class LLMDiagramGenerator:
         self.structure_prompt = ChatPromptTemplate.from_messages([
             (
                 "system",
-                """You are an expert in repository structure analysis. Create a Mermaid graph showing the file/module organization.
+                f"""You are an expert in repository structure analysis. Create a Mermaid graph showing the file/module organization.
+                 The code what you are analyzing is written in the following programming languages: {self.languages}.
 
                 Guidelines:
                 1. Create a tree/graph structure showing directories and key files
@@ -116,6 +128,23 @@ class LLMDiagramGenerator:
                 3. Show important dependencies between modules
                 4. Keep it clean and readable
                 5. Use appropriate Mermaid graph syntax
+
+                    CRITICAL RULES FOR MERMAID SYNTAX:
+                    1. Use ONLY standard Mermaid classDiagram syntax
+                    2. **NEVER use note statements** - they cause parsing errors
+                    3. Show classes, methods, and relationships ONLY
+
+                    Guidelines:
+                    1. Identify all classes, interfaces, structs, functions, and their relationships
+                    2. Show inheritance, composition, and important dependencies
+                    4. Use **valid Mermaid classDiagram syntax** only
+                    5. **Do NOT add notes for individual methods or attributes.**
+                    6. Only use `note for ClassName "..."` or detached notes like `note "..." as Note1`
+                    7. Ensure diagrams pass Mermaid parser validation
+                    8. Add a short plain-text description after the ```mermaid``` block."
+                    9. NEVER use curly braces like abstract or static
+                    10. Use <<abstract>> to denote abstract classes above the class name, not inside curly braces
+                    11. Use <<static>> to denote static methods, not inside curly braces
 
                 Return ONLY the Mermaid diagram code wrapped in ```mermaid``` blocks."""
             ),
@@ -144,7 +173,11 @@ class LLMDiagramGenerator:
                     ```
                     {code_content}
                     ```
-
+                    IMPORTANT: 
+                    - Use ONLY valid Mermaid classDiagram syntax
+                    - Do NOT include any note statements
+                    - Show classes, attributes, methods, and relationships
+                    - Keep it clean and parseable
                     Generate a comprehensive class diagram showing all classes, their relationships, and key methods."""
                 }
             ]
