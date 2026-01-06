@@ -23,7 +23,7 @@ repo_languages = list(languages.keys())
 api_key = GOOGLE_API_KEY
 
 print("Initializing LLM Diagram Generator...")
-generator = LLMDiagramGenerator(repo_languages=repo_languages, model="gemini-2.5-pro", api_key=api_key, user_choice="google")
+generator = LLMDiagramGenerator(repo_languages=repo_languages, model="gemini-2.5-flash", api_key=api_key, user_choice="google")
 exporter = DiagramExporter()
 
 
@@ -72,7 +72,8 @@ for idx, file in enumerate(code_files, 1):
         else:
             print(f"  ✗ Failed: {result.error}")
 
-        time.sleep(20)  # Sleep to avoid rate limits
+        print("  zzZ Sleeping for 20s...")
+        time.sleep(20)
             
     except Exception as e:
         print(f"  ✗ Error: {e}")
@@ -87,6 +88,9 @@ structure_result = generator.generate_repository_structure(file_paths)
 if structure_result.success:
     exporter.save_diagram(structure_result)
     print("✓ Repository structure diagram created")
+
+print("  zzZ Sleeping 20s before next diagram...")
+time.sleep(20)
 
 if len(all_code_contents) > 1:
     print("\nGenerating multi-file architecture diagram...")
