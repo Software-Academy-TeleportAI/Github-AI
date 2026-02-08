@@ -11,14 +11,27 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 REPO_NAME = os.getenv("REPO_NAME")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
+IGNORED_DIRS = {'.git', '.github', '.vscode', 'node_modules', 'venv', 'env', '__pycache__', 'dist', 'build', 'vendor'}
+ALLOWED_EXTENSIONS = {'.py', '.js', '.jsx', '.ts', '.tsx', '.php', '.java', '.go', '.rb', '.rs', '.c', '.cpp', '.h', '.cs', '.html', '.css', '.sql', '.prisma', '.json', '.yaml', '.yml', '.xml', '.md'}
+
 app = Flask(__name__)
 
 def get_all_files(contents, repo):
+    """
+    Recursively fetches all files from the repo, skipping non-essential directories
+    to prevent timeouts and useless noise.
+    """
     files = []
     while contents:
         file_content = contents.pop(0)
+        
+      
         if file_content.type == "dir":
-            contents.extend(repo.get_contents(file_content.path))
+            if file_content.name not in IGNORED_DIRS:
+                try:
+                    contents.extend(repo.get_contents(file_content.path))
+                except Exception as e:
+                    print(f"Error accessing {file_content.path}: {e}")
         else:
             files.append(file_content)
     return files
@@ -26,41 +39,60 @@ def get_all_files(contents, repo):
 
 def get_key_technical_files(all_files, framework: str):
     """
-    Filters the repository to find the files that define the 'Business Logic'
-    based on the framework.
+    Filters repository files. Since we are using Gemini Flash (High Context),
+    we try to pack as much code as possible, prioritizing framework-specific paths.
     """
     key_files_content = ""
-    priority_files = []
+    
     patterns = {
-        "Laravel": ["app/Models", "database/migrations", "app/Http/Controllers"],
-        "Django": ["models.py", "views.py", "serializers.py"],
-        "React": ["types.ts", "interfaces.ts", "store", "context"],
-        "Next.js": ["prisma/schema.prisma", "types.ts"],
-        "Flask": ["models.py", "app.py"]
+        "Laravel": ["app/Models", "database/migrations", "app/Http/Controllers", "routes"],
+        "Django": ["models.py", "views.py", "serializers.py", "urls.py", "admin.py"],
+        "React": ["src", "components", "hooks", "context", "store", "types"],
+        "Next.js": ["app", "pages", "prisma", "lib", "utils"],
+        "Flask": ["app.py", "models.py", "routes.py", "views.py", "schema.py", "controllers"],
+        "Express": ["routes", "controllers", "models", "middlewares"]
     }
 
-    search_paths = patterns.get(framework, ["src", "app", "models"])
+    search_paths = patterns.get(framework, ["src", "app", "lib", "models", "controllers"])
 
-    count = 0
-    max_files = 10 
-
-    for file in all_files:
-        
-        if any(p in file.path for p in search_paths) and file.path.endswith(('.php', '.py', '.ts', '.js', '.prisma')):
-            if count < max_files:
-                try:
-                    
-                    content = file.decoded_content.decode('utf-8')
-                    
-                    if len(content) > 2000: 
-                        content = content[:2000] + "...(truncated)"
-                    
-                    key_files_content += f"\n\n--- FILE: {file.path} ---\n{content}"
-                    count += 1
-                except:
-                    continue
+    TOTAL_CHAR_LIMIT = 400000 
+    current_chars = 0
     
+    files_processed = 0
+
+    def sort_priority(f):
+        is_priority = any(p in f.path for p in search_paths)
+        return 0 if is_priority else 1
+
+    sorted_files = sorted(all_files, key=sort_priority)
+
+    for file in sorted_files:
+
+        if current_chars >= TOTAL_CHAR_LIMIT:
+            key_files_content += f"\n\n--- [SYSTEM] STOPPED: Context limit reached ({current_chars} chars) ---"
+            break
+
+        _, ext = os.path.splitext(file.name)
+        if ext in ALLOWED_EXTENSIONS:
+            try:
+                
+                content = file.decoded_content.decode('utf-8')
+                
+                if len(content) > 20000: 
+                    content = content[:20000] + "\n...(truncated file too large)..."
+
+                file_entry = f"\n\n--- FILE: {file.path} ---\n{content}"
+                
+                key_files_content += file_entry
+                current_chars += len(file_entry)
+                files_processed += 1
+                
+            except Exception as e:
+                continue
+    
+    print(f"Processed {files_processed} files. Total Load: {current_chars} chars.")
     return key_files_content
+
 
 def generate_technical_docs_process(job_id, repo_url, token, callback_url):
     print(f"[{job_id}] ⚙️ Starting TECHNICAL generation for: {repo_url}")
